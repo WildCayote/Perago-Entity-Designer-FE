@@ -12,10 +12,13 @@ const DeleteProjectModal = ({
 }) => {
   return (
     <>
-      <p>Are you sure you want to delete this project</p>
-      <Button color="green" onClick={() => handleDelete(projectId)}>
+      <p className="text-center">Are you sure you want to delete this project</p>
+      <div className="flex justify-center">
+      <Button className="mt-2" color="green" onClick={() => handleDelete(projectId)}>
         Delete
       </Button>
+      </div>
+   
     </>
   );
 };

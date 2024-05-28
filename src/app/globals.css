@@ -63,3 +63,20 @@ body {
 .hero{
   background-image: url("../assets/hero2.jpg");
 }
+
+
+.project-list {
+  max-height: calc(100vh - 128px); 
+  overflow-y: auto;
+}
+
+::-webkit-scrollbar {
+  width: 6px; 
+}
+
+::-webkit-scrollbar-thumb {
+  min-width: 10px; 
+  min-height: 10px; 
+  background-color: green;
+  border-radius: 1px;
+}

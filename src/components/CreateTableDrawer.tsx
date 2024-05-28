@@ -1,6 +1,6 @@
-import React from "react";
-import { Input, Button, Checkbox, Table, Drawer } from "@mantine/core";
-import { useForm, useFieldArray } from "react-hook-form";
+import React, { useEffect, useState } from "react";
+import { Input, Button, Checkbox, Table, Select } from "@mantine/core";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { v4 } from "uuid";
@@ -8,7 +8,11 @@ import { useDispatch } from "react-redux";
 import { createTable } from "@/store/slices/workSpaceSlice";
 import { createTableAPI } from "@/services/tableService";
 import useTableStore from "@/zustandStore/tableStore";
-import { ColumnDto, createColumnsAPI } from "@/services/columnService";
+import {
+  ColumnDto,
+  createColumnsAPI,
+  getModelColumns,
+} from "@/services/columnService";
 
 const schema = yup.object().shape({
   name: yup.string().required("Name is required"),
@@ -19,12 +23,34 @@ const schema = yup.object().shape({
       type: yup.string(),
       defaultValue: yup.string(),
       is_primarykey: yup.boolean(),
+      is_foreignkey: yup.boolean(),
+      relation: yup
+        .object()
+        .shape({
+          name: yup.string(),
+          type: yup.string(),
+          referencedColumnId: yup.string(),
+          eager: yup.boolean(),
+          nullable: yup.boolean(),
+        })
+        .nullable(),
     })
   ),
 });
 
-const CreateTableDrawer = ({ isOpen, onClose, projectId }) => {
+const CreateTableDrawer = ({ onClose, projectId }) => {
   const dispatch = useDispatch();
+  const [foreignKeySelections, setForeignKeySelections] = useState({});
+  const { tables } = useTableStore((state) => state);
+
+  const handleForeignKeyChange =
+    (index: number) => (e: { target: { checked: any } }) => {
+      const isChecked = e.target.checked;
+      setForeignKeySelections((prevState) => ({
+        ...prevState,
+        [index]: isChecked,
+      }));
+    };
 
   const {
     register,
@@ -47,8 +73,7 @@ const CreateTableDrawer = ({ isOpen, onClose, projectId }) => {
 
   const { addTable } = useTableStore();
 
-  // Function to handle form submission
-  const onSubmit = async (data: yup.InferType<typeof schema>) => {
+  const onSubmit = async (data) => {
     const id = v4();
     const newTable = {
       id,
@@ -60,6 +85,8 @@ const CreateTableDrawer = ({ isOpen, onClose, projectId }) => {
         type: column.type,
         defaultValue: column.defaultValue,
         is_primarykey: column.is_primarykey || false,
+        is_foreignkey: column.is_foreignkey || false,
+        relation: column.relation || null,
       })),
     };
 
@@ -77,12 +104,15 @@ const CreateTableDrawer = ({ isOpen, onClose, projectId }) => {
           type: column.type,
           isPrimary:
             column.is_primarykey == undefined ? false : column.is_primarykey,
-          isForiegn: false,
+          isForiegn:
+            column.is_foreignkey == undefined ? false : column.is_foreignkey,
+          relation: column.relation || {},
         }));
-        createColumnsAPI(createdTable.id, newColumnsAPI as ColumnDto[]);
-        console.log("will be sent to api : ", newColumnsAPI);
+        await createColumnsAPI(createdTable.id, newColumnsAPI as ColumnDto[]);
+        console.log("will be sent to api: ", newColumnsAPI);
       }
       addTable(createdTable);
+      console.log(createdTable);
       onClose();
     } catch (error) {
       alert("Couldn't create table");
@@ -95,8 +125,45 @@ const CreateTableDrawer = ({ isOpen, onClose, projectId }) => {
   };
 
   const addColumn = () => {
-    append({ name: "", type: "", defaultValue: "", is_primarykey: false });
+    append({
+      name: "",
+      type: "",
+      defaultValue: "",
+      is_primarykey: false,
+      is_foreignkey: false,
+      relation: null,
+    });
   };
+
+  let datas = [];
+  const [dataState, setData] = useState([]);
+  useEffect(() => {
+    tables.forEach((table) => {
+      if (table.projectId == projectId)
+        getModelColumns(table.id).then(
+          (response) => {
+            for (const column of response) {
+              if (column.isPrimary) {
+                let duplicate = datas.find(
+                  (data) => data.columnId == column.id
+                );
+                if (duplicate == undefined)
+                  datas.push({
+                    columnId: column.id,
+                    tableName: table.name,
+                  });
+
+                console.log("there is a duplicate at", duplicate);
+              }
+              setData(datas);
+            }
+          },
+          () => {}
+        );
+    });
+
+    setData(datas);
+  }, []);
 
   return (
     <div className="relative">
@@ -123,16 +190,24 @@ const CreateTableDrawer = ({ isOpen, onClose, projectId }) => {
                           placeholder="name"
                           {...register(`columns.${index}.name`)}
                         />
-                        {errors.name && <p>{errors.name.message}</p>}
+                        {errors.columns?.[index]?.name && (
+                          <p>{errors.columns[index].name.message}</p>
+                        )}
                       </Input.Wrapper>
                     </Table.Th>
                     <Table.Th>
-                      <Input.Wrapper label="type" withAsterisk>
-                        <Input
-                          placeholder="Type"
-                          {...register(`columns.${index}.type`)}
-                        />
-                      </Input.Wrapper>
+                      <Controller
+                        control={control}
+                        name={`columns.${index}.type`}
+                        render={({ field }) => (
+                          <Select
+                            label="Data type"
+                            withAsterisk
+                            data={["number", "string", "boolean"]}
+                            {...field}
+                          />
+                        )}
+                      />
                     </Table.Th>
                     <Table.Th>
                       <Input.Wrapper label="Default value">
@@ -146,13 +221,85 @@ const CreateTableDrawer = ({ isOpen, onClose, projectId }) => {
                         />
                       </Input.Wrapper>
                     </Table.Th>
+                    <Table.Th>
+                      <Input.Wrapper label="FK">
+                        <Checkbox
+                          {...register(`columns.${index}.is_foreignkey`)}
+                          onChange={handleForeignKeyChange(index)}
+                        />
+                      </Input.Wrapper>
+                    </Table.Th>
                   </Table.Tr>
                 </Table.Thead>
               </Table>
+
+              {foreignKeySelections[index] && (
+                <div className="grid-cols-3">
+                  <div className="m-1">
+                    <Input.Wrapper label="Referenced Column">
+                      <Controller
+                        control={control}
+                        name={`columns.${index}.relation.referencedColumnId`}
+                        render={({ field }) => (
+                          <Select
+                            placeholder="Referenced column"
+                            data={dataState.map((data) => ({
+                              value: data.columnId,
+                              label: data.tableName,
+                            }))}
+                            {...field}
+                          />
+                        )}
+                      />
+                    </Input.Wrapper>
+                  </div>
+
+                  <div className="m-1">
+                    <Input.Wrapper label="Rerverse Name">
+                      <Input
+                        placeholder="name"
+                        {...register(`columns.${index}.relation.name`)}
+                      />
+                    </Input.Wrapper>
+                  </div>
+
+                  <div className="m-1">
+                    <Input.Wrapper label="Relation Type">
+                      <Controller
+                        control={control}
+                        name={`columns.${index}.relation.type`}
+                        render={({ field }) => (
+                          <Select
+                            placeholder="Relation type"
+                            data={["one-to-one", "many-to-one", "one-to-many"]}
+                            {...field}
+                          />
+                        )}
+                      />
+                    </Input.Wrapper>
+                  </div>
+
+                  <div>
+                    <Input.Wrapper label="Eager">
+                      <Checkbox
+                        {...register(`columns.${index}.relation.eager`)}
+                      />
+                    </Input.Wrapper>
+                  </div>
+
+                  <div>
+                    <Input.Wrapper label="Nullable">
+                      <Checkbox
+                        {...register(`columns.${index}.relation.nullable`)}
+                      />
+                    </Input.Wrapper>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
 
-          <div className="col-span-4 space-y-4 rounded-lg border  border-green-500 border-dashed m-8 p-0 text-center">
+          <div className="col-span-4 space-y-4 rounded-lg border border-green-500 border-dashed m-8 p-0 text-center">
             <div className="space-y-1">
               <Button
                 variant="transparent"
@@ -161,13 +308,13 @@ const CreateTableDrawer = ({ isOpen, onClose, projectId }) => {
                 onClick={addColumn}
                 size="xs"
               >
-                add column
+                Add Column
               </Button>
             </div>
           </div>
         </div>
 
-        <div className="relative bottom-0  right-0 mt-6 justify-center flex">
+        <div className="relative bottom-0 right-0 mt-6 justify-center flex">
           <Button type="submit" color="green">
             Create
           </Button>

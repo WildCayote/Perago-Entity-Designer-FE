@@ -3,20 +3,20 @@ import { useForm } from "react-hook-form";
 import * as yup from "yup";
 
 import { yupResolver } from "@hookform/resolvers/yup";
-import { useDisclosure } from "@mantine/hooks";
+
 
 const schema = yup.object({
   name: yup.string().required(),
 });
 
 const EditProjectModal = ({
-  projectId,
-  projectName,
-  submit,
+  tableId,
+  tableName,
+  handleEdit,
 }: {
-  projectId: string;
-  projectName: string;
-  submit: (projectId: string, newName: string) => void;
+  tableId: string;
+  tableName: string;
+  handleEdit: (tableId: string, newName: string) => void;
 }) => {
  
   const {
@@ -24,22 +24,22 @@ const EditProjectModal = ({
     handleSubmit,
     formState: { errors },
   } = useForm({
-    defaultValues: { name: projectName }, // Set default values from project prop
+    defaultValues: { name: tableName }, 
     resolver: yupResolver(schema),
   });
 
   const onSubmit = async (data: yup.InferType<typeof schema>) => {
     const newName = data.name;
-    if (newName != projectName) {
+    if (newName != tableName) {
       console.log("now i will call the submit function");
-      submit(projectId, newName);
+      handleEdit(tableId, newName);
     }
   };
 
   return (
     <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)}>
       <TextInput
-        placeholder={projectName}
+        placeholder={tableName}
         {...register("name")}
         error={errors.name?.message}
         className={errors.name ? "error-input" : ""}

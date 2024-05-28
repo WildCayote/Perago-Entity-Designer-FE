@@ -2,9 +2,14 @@
 
 import WorkSpaceSideBar from "@/components/WorkSpaceSideBar";
 import { useParams } from "next/navigation";
-import SearchBar from "@/components/SearchBar";
-import { IconTable, IconChevronDown, IconDownload } from "@tabler/icons-react";
-import { Button, Menu, Table, Drawer } from "@mantine/core";
+import {
+  IconTable,
+  IconDownload,
+  IconCode,
+  IconTrash,
+  IconPencil,
+} from "@tabler/icons-react";
+import { Button, Drawer, Modal } from "@mantine/core";
 
 import CreateTableDrawer from "@/components/CreateTableDrawer";
 import { useState, useEffect } from "react";
@@ -14,21 +19,86 @@ import { useDisclosure } from "@mantine/hooks";
 
 import useTables from "@/hooks/tableHooks";
 import useTableStore, { TableInterface } from "@/zustandStore/tableStore";
-import { getModelColumns } from "@/services/columnService";
-import { useColumnStore } from "@/zustandStore/columnStore";
+import { deleteColumnAPI, getModelColumns } from "@/services/columnService";
+import { ColumnInterface, useColumnStore } from "@/zustandStore/columnStore";
 import {
   addGenerateJob,
   downloadProject,
   openWebSocket,
 } from "@/services/extractService";
+import DeleteTableModal from "@/components/DeleteTableModal";
+import { deleteTableAPI } from "@/services/tableService";
+import EditTableModal from "@/components/EditTableModal";
+
+import { updateTableAPI } from "@/services/tableService";
 
 const Page = () => {
   const [opened, { open, close }] = useDisclosure(false);
 
+  const { removeTable, editTable } = useTableStore((state) => state);
+  const { deleteColumn } = useColumnStore((state) => state);
   const { id } = useParams();
   const projectId = id;
 
   const { data, isLoading } = useTables(projectId.toString());
+  const [deleteModalOpened, setDeleteModalOpened] = useState(false);
+  const [editModalOpened, setEditModalOpened] = useState(false);
+  const [selectedTableId, setSelectedTableId] = useState("");
+  const [selectedTableName, setSelectedTableName] = useState("");
+
+  const handleOpenDeleteModal = (tableId: string) => {
+    setDeleteModalOpened(true);
+    setSelectedTableId(tableId);
+  };
+
+  const handleDelete = (tableId: string) => {
+    console.log(`table with this id - ${tableId} 
+    is going to get deleted`);
+
+    deleteTableAPI(projectId, tableId).then(
+      () => {
+        removeTable(tableId);
+        alert("Successfully deleted Table!");
+      },
+      (reason) => {
+        alert("It seems like you cant delete this table");
+      }
+    );
+    handleCloseDeleteModal();
+  };
+
+  const handleCloseDeleteModal = () => {
+    setDeleteModalOpened(false);
+    setSelectedTableId("");
+  };
+
+  const handleOpenEditModal = (tableId: string, tableName: string) => {
+    setSelectedTableName(tableName);
+    setSelectedTableId(tableId);
+    setEditModalOpened(true);
+  };
+
+  const handleEdit = (tableId: string, newName: string) => {
+    updateTableAPI(projectId, tableId, newName).then(
+      () => {
+        alert("successfully updated the table");
+        editTable(tableId, newName);
+      },
+      (reason) => {
+        alert("it seems like you were not able to edit the table");
+      }
+    );
+
+    handleCloseEditModal();
+  };
+
+  const handleCloseEditModal = () => {
+    setEditModalOpened(false);
+    setSelectedTableId("");
+    setSelectedTableName("");
+  };
+
+  const getColumnParetn = (columnId: string) => {};
 
   const {
     tables: storeTables,
@@ -46,6 +116,22 @@ const Page = () => {
 
   const { columns, setColumns } = useColumnStore();
 
+  const handleColumnDelete = (event) => {
+    const buttonId = event.currentTarget.id;
+    const column = columns.find((c) => c.id == buttonId);
+    const modelId = column?.modelId ?? "";
+    const columnId = column?.id ?? "";
+    deleteColumnAPI(modelId, columnId).then(
+      () => {
+        alert("Column deleted successfully!");
+        deleteColumn(buttonId);
+      },
+      () => {
+        alert("Couldn't delete column");
+      }
+    );
+  };
+
   const notifyUser = (jobId: string) => {
     alert(
       "The generation of your task has been done! You can now use the `Download Code` button."
@@ -62,7 +148,15 @@ const Page = () => {
       const apiColumns = await getModelColumns(tableId);
       console.log(apiColumns);
       setTableId(tableId);
-      setColumns(apiColumns);
+
+      // see if the columns are already there
+      let allColumns = [] as ColumnInterface[];
+      apiColumns.forEach((c) => {
+        if (columns.find((column) => c.id === column.id) == undefined)
+          allColumns.push(c);
+      });
+      allColumns = allColumns.concat(columns);
+      setColumns(allColumns);
     } catch (err) {
       console.log(err);
     }
@@ -98,9 +192,8 @@ const Page = () => {
           </p>
         </div>
 
-        <div className="justify-center">
-          <SearchBar />
-          <div className="flex justify-center border border-r-2 border-b-white">
+        <div className="justify-center project-list flex flex-col h-screen">
+          <div className="flex justify-center border border-r-2 border-b-white mt-2">
             <Drawer
               opened={opened}
               onClose={close}
@@ -126,34 +219,87 @@ const Page = () => {
             </Button>
           </div>
 
-          <div className="grid-cols-1">
+          <div className="grid-cols-1 overflow-y-auto">
             {storeTables?.length > 0 && (
               <div>
                 {storeTables.map(
                   (table) =>
                     table && (
-                      <Button
-                        justify="left"
-                        fullWidth
-                        color="green"
-                        leftSection={<IconTable />}
-                        variant="transparent"
-                        key={table.id}
-                        onClick={handleButtonClick}
-                        id={table.id}
-                      >
-                        {table.name}
-                      </Button>
+                      <div key={table.id} className="flex">
+                        <Button
+                          justify="left"
+                          fullWidth
+                          color="green"
+                          leftSection={<IconTable />}
+                          variant="transparent"
+                          onClick={handleButtonClick}
+                          id={table.id}
+                        >
+                          {table.name}
+                        </Button>
+
+                        <Button
+                          variant="transparent"
+                          id={table.id}
+                          onClick={() => handleOpenDeleteModal(table.id)}
+                        >
+                          <IconTrash color="green" />
+                        </Button>
+                        <Button
+                          variant="transparent"
+                          id={table.id}
+                          onClick={() =>
+                            handleOpenEditModal(table.id, table.name)
+                          }
+                        >
+                          <IconPencil color="green" />
+                        </Button>
+
+                        <Modal
+                          color="green"
+                          opened={deleteModalOpened}
+                          onClose={() => handleCloseDeleteModal()}
+                          centered
+                        >
+                          {table && (
+                            <DeleteTableModal
+                              tableId={selectedTableId}
+                              handleDelete={handleDelete}
+                            />
+                          )}
+                        </Modal>
+                        <Modal
+                          color="green"
+                          opened={editModalOpened}
+                          onClose={() => handleCloseEditModal()}
+                          centered
+                        >
+                          {table && (
+                            <EditTableModal
+                              tableName={selectedTableName}
+                              tableId={selectedTableId}
+                              handleEdit={handleEdit}
+                            />
+                          )}
+                        </Modal>
+                      </div>
                     )
                 )}
               </div>
             )}
           </div>
           {storeTables?.length > 0 && (
-            <div className="flex justify-center position-relative">
-              <Button color="green" onClick={handleGenerateClick}>
-                Generate Code
-              </Button>
+            <div className="mt-auto ml-3">
+              <div>
+                <Button
+                  leftSection={<IconCode />}
+                  color="green"
+                  size="xs"
+                  onClick={handleGenerateClick}
+                >
+                  Generate Code
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -176,43 +322,67 @@ const Page = () => {
           </div>
         </div>
         <div>
-          {tableId && (
-            <Table striped highlightOnHover withTableBorder withColumnBorders>
-              <Table.Thead>
+          <div className="overflow-x-auto">
+            <table className="min-w-full w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+              <thead className="bg-gray-200">
                 <tr>
-                  {columns.map((column, index) => (
-                    <Table.Th key={column.id}>
-                      <span>{column.name}</span>
-                      <Menu shadow="md" width={200}>
-                        <Menu.Target>
-                          <Button variant="transparent">
-                            <IconChevronDown color="green" size={20} />
-                          </Button>
-                        </Menu.Target>
-
-                        <Menu.Dropdown>
-                          <Menu.Label></Menu.Label>
-                          <Menu.Item>type: {column.type}</Menu.Item>
-                          <Menu.Item>primary key: {column.isPrimary}</Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    </Table.Th>
-                  ))}
-
-                  {
-                    <div>
-                      <Table.Th key="addButton">
-                        <AddColumnModal
-                          projectId={projectId as string}
-                          id={tableId ?? ""}
-                        />
-                      </Table.Th>
-                    </div>
-                  }
+                  <th className="py-3 px-6 text-left text-gray-600 font-semibold uppercase tracking-wider border-b border-gray-200">
+                    Name
+                  </th>
+                  <th className="py-3 px-6 text-left text-gray-600 font-semibold uppercase tracking-wider border-b border-gray-200">
+                    Type
+                  </th>
+                  <th className="py-3 px-6 text-left text-gray-600 font-semibold uppercase tracking-wider border-b border-gray-200">
+                    Primary Key
+                  </th>
+                  <th className="py-3 px-6 text-left text-gray-600 font-semibold uppercase tracking-wider border-b border-gray-200">
+                    Is Foriegn
+                  </th>
+                  <th></th>
                 </tr>
-              </Table.Thead>
-            </Table>
-          )}
+              </thead>
+              <tbody>
+                {columns.map(
+                  (column) =>
+                    column.modelId == tableId && (
+                      <tr
+                        key={column.id}
+                        className="hover:bg-gray-100 transition-colors duration-200"
+                      >
+                        <td className="py-4 px-6 border-b border-gray-200">
+                          {column.name}
+                        </td>
+                        <td className="py-4 px-6 border-b border-gray-200">
+                          {column.type}
+                        </td>
+                        <td className="py-4 px-6 border-b border-gray-200">
+                          {column.isPrimary ? "Yes" : "No"}
+                        </td>
+                        <td className="py-4 px-6 border-b border-gray-200">
+                          {column.isForiegn ? "Yes" : "No"}
+                        </td>
+                        <td>
+                          <Button
+                            variant="transparent"
+                            onClick={handleColumnDelete}
+                            id={column.id}
+                          >
+                            <IconTrash color="green" />
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="col-span-full">
+            <AddColumnModal
+              projectId={projectId as string}
+              id={tableId ?? ""}
+            />
+          </div>
         </div>
       </div>
     </div>

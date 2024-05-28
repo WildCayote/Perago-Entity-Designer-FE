@@ -25,7 +25,6 @@ const Main = () => {
           className=" bg-green-600
           bg-no-repeat h-24 flex items-center justify-end text-center pr-40 mb-1"
         >
-          <SearchBar />
         </div>
 
         <div>

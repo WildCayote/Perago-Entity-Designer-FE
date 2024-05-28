@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 
 import { Button, Menu, Modal, NavLink } from "@mantine/core";
 import {
-  IconChevronRight,
   IconFolder,
   IconMenu2,
   IconPencil,
@@ -92,7 +91,7 @@ const SideBar = () => {
   }, [data]);
 
   return (
-    <div className="fixed top-0 left-0 h-screen w-56 bg-gray-100 grid-cols-1 border border-r-2 border-white overflow-y-scroll">
+    <div className="fixed top-0 left-0 h-screen w-56 bg-gray-100 grid-cols-1 border border-r-2 border-white ">
       <div className="flex justify-start p-3  h-24 mt-5">
         <p className="head_text">
           <span
@@ -105,8 +104,8 @@ const SideBar = () => {
         </p>
       </div>
 
-      <div className="mt-10">
-        <div>
+      <div className="mt-10 h-screen" >
+        <div className="project-list">
           <NavLink
             defaultOpened
             leftSection={<IconFolder />}
@@ -173,9 +172,11 @@ const SideBar = () => {
           <Modal
             color="red"
             opened={deleteModalOpened}
+
             onClose={handleCloseDeleteModal}
-            title="Delete Project"
+          
             centered
+            
           >
             {selectedProjectName != "" && (
               <DeleteProjectModal

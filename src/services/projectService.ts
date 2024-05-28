@@ -5,6 +5,8 @@ export interface ProjectDTO {
   description: string | undefined;
 }
 
+
+
 const apiClient = new APIClient<ProjectDTO>("projects/");
 
 export async function createProjectAPI(project: ProjectDTO) {
@@ -24,3 +26,5 @@ export async function updateProjectAPI(projectId: string, newName: string) {
 
   return apiClient.update({}, data);
 }
+
+

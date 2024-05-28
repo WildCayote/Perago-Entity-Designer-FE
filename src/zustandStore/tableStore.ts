@@ -21,6 +21,23 @@ const useTableStore = create<tableStore>((set) => ({
   setTables: (tables: TableInterface[]) => set(() => ({ tables: tables })),
   addTable: (table: TableInterface) =>
     set((state) => ({ tables: state.tables.concat([table]) })),
+  removeTable: (tableId: string) =>
+    set((state) => ({
+
+      tables: state.tables.filter((table) => table.id != tableId)
+    })),
+  
+  editTable: (tableId: string, newName :string) => 
+    set((state) => {
+      const updatedtable= state.tables.map((table) =>
+        table.id == tableId ? { ...table, name: newName } : table
+      );
+
+
+
+      return { tables: updatedtable };
+}),
+
 }));
 
 export default useTableStore;
