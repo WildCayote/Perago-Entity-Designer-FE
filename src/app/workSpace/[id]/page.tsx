@@ -8,6 +8,7 @@ import {
   IconCode,
   IconTrash,
   IconPencil,
+  IconGraph,
 } from "@tabler/icons-react";
 import { Button, Drawer, Modal } from "@mantine/core";
 
@@ -31,6 +32,12 @@ import { deleteTableAPI } from "@/services/tableService";
 import EditTableModal from "@/components/EditTableModal";
 
 import { updateTableAPI } from "@/services/tableService";
+import ERDiagram from "@/components/ERDiagram";
+import {
+  ColumnItem,
+  RelationItem,
+  TableItem,
+} from "@/components/ERDiagram/ERDiagram";
 
 const Page = () => {
   const [opened, { open, close }] = useDisclosure(false);
@@ -41,10 +48,16 @@ const Page = () => {
   const projectId = id;
 
   const { data, isLoading } = useTables(projectId.toString());
+
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
+  const [erOpened, setErOpened] = useState(false);
   const [editModalOpened, setEditModalOpened] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState("");
   const [selectedTableName, setSelectedTableName] = useState("");
+
+  const [erTables, setErTables] = useState<TableItem[]>([]);
+  const [erColumns, setErColumns] = useState<ColumnItem[]>([]);
+  const [erRelations, setErRelations] = useState<RelationItem[]>([]);
 
   const handleOpenDeleteModal = (tableId: string) => {
     setDeleteModalOpened(true);
@@ -179,6 +192,52 @@ const Page = () => {
     downloadProject(jobId);
   };
 
+  const handleErOpen = async () => {
+    // get the tables ready
+    let tabels = [] as TableItem[];
+    storeTables.forEach((table) => {
+      tabels.push({
+        id: table.id,
+        name: table.name,
+      });
+    });
+
+    // get the columns and relations ready
+    let columns = [] as ColumnItem[];
+    let relations = [] as RelationItem[];
+    for (let table of storeTables) {
+      let tableColumns = await getModelColumns(table.id);
+      tableColumns.forEach((col) => {
+        columns.push({
+          id: col.id,
+          modelId: col.modelId,
+          name: col.name,
+          isForiegn: col.isForiegn,
+          isPrimary: col.isPrimary,
+          type: col.type,
+        });
+
+        if (col.isForiegn) {
+          relations.push({
+            id: col.relation?.id,
+            columnId: col.relation?.columnId,
+            referencedColumnId: col.relation?.referencedColumnId,
+            type: col.relation?.type,
+          });
+        }
+      });
+    }
+
+    setErColumns(columns);
+    setErTables(tabels);
+    setErRelations(relations);
+    setErOpened(true);
+  };
+
+  const handlErClose = () => {
+    setErOpened(false);
+  };
+
   return (
     <div className="grid-cols-custom">
       <div className="h-screen bg-green-900 border border-r-2">
@@ -282,6 +341,21 @@ const Page = () => {
                             />
                           )}
                         </Modal>
+
+                        <Modal
+                          color="green"
+                          opened={erOpened}
+                          onClose={handlErClose}
+                          className="flex items-center"
+                          centered
+                          fullScreen
+                        >
+                          <ERDiagram
+                            tables={erTables}
+                            columns={erColumns}
+                            relationships={erRelations}
+                          />
+                        </Modal>
                       </div>
                     )
                 )}
@@ -298,6 +372,16 @@ const Page = () => {
                   onClick={handleGenerateClick}
                 >
                   Generate Code
+                </Button>
+              </div>
+              <div className="mt-3">
+                <Button
+                  onClick={handleErOpen}
+                  leftSection={<IconGraph />}
+                  color="green"
+                  size="xs"
+                >
+                  ER Diagram
                 </Button>
               </div>
             </div>

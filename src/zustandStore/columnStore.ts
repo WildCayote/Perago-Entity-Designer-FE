@@ -8,13 +8,14 @@ export interface ColumnInterface {
   type: string;
   isPrimary: boolean;
   isForiegn: boolean;
-  relation ?: relationInterface,
+  relation?: relationInterface;
 }
 
-interface relationInterface {
-  columnId : string;
-  referencedColumnId : string;
-  type : string;
+export interface relationInterface {
+  id?: string;
+  columnId: string;
+  referencedColumnId: string;
+  type: string;
 }
 
 interface columnStore {
@@ -23,7 +24,7 @@ interface columnStore {
   setLoading: (isLoading: boolean) => void;
   setColumns: (columns: ColumnInterface[]) => void;
   addColumn: (column: ColumnInterface) => void;
-  deleteColumn: (column: ColumnInterface) => void
+  deleteColumn: (column: string) => void;
 }
 
 export const useColumnStore = create<columnStore>((set) => ({
@@ -33,7 +34,8 @@ export const useColumnStore = create<columnStore>((set) => ({
   setColumns: (columns: ColumnInterface[]) => set({ columns: columns }),
   addColumn: (column: ColumnInterface) =>
     set((state) => ({ columns: state.columns.concat([column]) })),
-  deleteColumn: (columnId: string) => 
-    set((state) =>({columns: state.columns.filter((column) => column.id != columnId)}))
-
+  deleteColumn: (columnId: string) =>
+    set((state) => ({
+      columns: state.columns.filter((column) => column.id != columnId),
+    })),
 }));

@@ -1,0 +1,6 @@
+.main {
+  width: 200px;
+  height: 3px;
+  border: solid black 1px;
+  border-top: 0px;
+}

@@ -14,7 +14,6 @@ const Main = () => {
   const [editModalOpened, setEditModalOpened] = useState(false);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
 
-  
   return (
     <div className="flex h-screen">
       <div className="mr-56">
@@ -24,8 +23,7 @@ const Main = () => {
         <div
           className=" bg-green-600
           bg-no-repeat h-24 flex items-center justify-end text-center pr-40 mb-1"
-        >
-        </div>
+        ></div>
 
         <div>
           <div className="col-span-4 space-y-4 rounded-lg border border-green-500 border-dashed m-8 p-6 text-center">
