@@ -203,7 +203,14 @@ const CreateTableDrawer = ({ onClose, projectId }) => {
                           <Select
                             label="Data type"
                             withAsterisk
-                            data={["number", "string", "boolean"]}
+                            data={[
+                              "number",
+                              "string",
+                              "bool",
+                              "jsonb",
+                              "any",
+                              "Date",
+                            ]}
                             {...field}
                           />
                         )}

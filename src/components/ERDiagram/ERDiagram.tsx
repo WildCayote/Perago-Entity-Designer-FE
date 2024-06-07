@@ -105,6 +105,8 @@ const ERDiagram = ({
   let currentX = 0;
   let currentY = 0;
   let currentTable = 0;
+  let level = 0;
+  let levelHieght = 0;
 
   tables.forEach((table) => {
     const tableId = table.id;
@@ -134,15 +136,18 @@ const ERDiagram = ({
     currentY += CLOSING_HEIGHT;
     tableHeight += CLOSING_HEIGHT;
 
-    if (currentTable + 1 <= TABLES_PER_ROW) {
+    if (currentTable + 1 < TABLES_PER_ROW) {
       currentX += WIDTH + GAP;
       currentTable += 1;
-      currentY = 0;
+      if (level <= 0) currentY = 0;
+      currentY = levelHieght;
       if (tableHeight > maxHeight) maxHeight = tableHeight;
     } else {
       currentX = 0;
       currentTable = 0;
-      currentY += maxHeight + GAP;
+      level += 1;
+      currentY = maxHeight + GAP;
+      levelHieght = currentY;
       maxHeight = 0;
     }
   });

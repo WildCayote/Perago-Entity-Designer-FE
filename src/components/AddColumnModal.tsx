@@ -56,8 +56,10 @@ const AddColumnModal = ({ projectId, id }) => {
       type: data.type,
       isPrimary: data.is_primarykey,
       isForiegn: data.is_foreignkey,
-      relation: data.relation || null,
+      relation: data.relation,
     };
+
+    console.log("The data submited is as follows: ", columnData);
 
     try {
       const response = await createColumnAPI(tableId, columnData);
@@ -77,7 +79,12 @@ const AddColumnModal = ({ projectId, id }) => {
     }));
   };
 
-  const [columnOptions, setColumnOptions] = useState([]);
+  const [columnOptions, setColumnOptions] = useState<
+    {
+      value: string;
+      label: string;
+    }[]
+  >([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,12 +95,21 @@ const AddColumnModal = ({ projectId, id }) => {
           allColumns.push(...tableColumns.filter((column) => column.isPrimary));
         }
       }
-      setColumnOptions(
-        allColumns.map((column) => ({
+
+      let options = [] as { value: string; label: string }[];
+
+      allColumns.forEach((column) => {
+        let modelId = column.modelId;
+        let model = tables.find((table) => table.id == modelId);
+        let modelName = model?.name;
+
+        options.push({
           value: column.id,
-          label: `${column.name} (${column.tableName})`,
-        }))
-      );
+          label: `${modelName}`,
+        });
+      });
+
+      setColumnOptions(options);
     };
 
     fetchData();
@@ -120,7 +136,10 @@ const AddColumnModal = ({ projectId, id }) => {
               control={control}
               name="type"
               render={({ field }) => (
-                <Select data={["number", "string", "boolean"]} {...field} />
+                <Select
+                  data={["number", "string", "bool", "jsonb", "any", "Date"]}
+                  {...field}
+                />
               )}
             />
           </Input.Wrapper>
